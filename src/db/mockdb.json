@@ -1,0 +1,47 @@
+[
+  {
+    "id": 1,
+    "nome": "Empresa Alpha",
+    "email": "empresa@alpha.com",
+    "senha": "12345",
+    "resumo": {
+      "maquinasProtegidas": "15 de 15 Seguras",
+      "vulnerabilidades": "2 Encontradas",
+      "riscos": "1 Médio",
+      "incidentes": "Nenhum"
+    },
+    "detalhes": {
+      "maquinas": [
+        { "nome": "Servidor Financeiro", "status": "Segura" },
+        { "nome": "Notebook RH", "status": "Segura" },
+        { "nome": "PC Marketing", "status": "Segura" }
+      ],
+      "vulnerabilidades": [
+        {
+          "id": "VULN-001",
+          "descricao": "Porta RDP 3389 exposta na rede corporativa",
+          "severidade": "Alta"
+        },
+        {
+          "id": "VULN-002",
+          "descricao": "Versão desatualizada do navegador Chrome",
+          "severidade": "Média"
+        }
+      ],
+      "riscos": [
+        {
+          "id": "RISK-001",
+          "descricao": "Backup local sem redundância em nuvem",
+          "impacto": "Médio"
+        }
+      ],
+      "incidentes": [
+        {
+          "id": "INC-001",
+          "descricao": "Tentativa de acesso remoto bloqueada",
+          "impacto": "Baixo"
+        }
+      ]
+    }
+  }
+]
