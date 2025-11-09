@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken";
 import fs from "fs";
 
-const data = JSON.parse(fs.readFileSync("./src/db/mockDB.json", "utf-8"));
+const data = JSON.parse(fs.readFileSync("./src/db/mockdb.json", "utf-8"));
 
 // === LOGIN ===
 export const login = (req, res) => {
