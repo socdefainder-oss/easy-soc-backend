@@ -7,7 +7,6 @@ if (!ACCESS_KEY) {
   console.warn("⚠️ GZ_ACCESS_KEY não definido. Configure no Render!");
 }
 
-// Função genérica para chamadas na API
 async function callGZ(method, params = {}) {
   const body = {
     jsonrpc: "2.0",
@@ -32,45 +31,30 @@ async function callGZ(method, params = {}) {
   return data.result || {};
 }
 
-// ================================
-// 🚀 Função principal
-// ================================
 export async function getEndpointsFromGravityZone() {
   try {
-    console.log("🔹 Etapa 1: Descobrindo empresas...");
+    console.log("🔹 Chamando método getManagedEndpointsList...");
 
-    const companies = await callGZ("getCompaniesList", {});
-    const empresa = companies.items?.find(c => c.name?.toLowerCase().includes("defainder"));
+    const result = await callGZ("getManagedEndpointsList", {});
 
-    if (!empresa) {
-      console.log("⚠️ Nenhuma empresa chamada 'defainder' encontrada. Usando raiz padrão.");
-    } else {
-      console.log(`🏢 Empresa encontrada: ${empresa.name} (ID ${empresa.id})`);
+    if (!result.items || result.items.length === 0) {
+      console.log("⚠️ Nenhum endpoint retornado. Resultado bruto:", JSON.stringify(result, null, 2));
+      return [];
     }
 
-    console.log("🔹 Etapa 2: Buscando inventário de endpoints...");
-
-    const inventory = await callGZ("getNetworkInventoryItems", {
-      parentId: empresa ? empresa.id : undefined,
-      filters: {},
-      fields: [
-        "name", "fqdn", "entityName", "ip", "status", "managedState",
-        "securityStatus", "lastSeen", "os", "policy", "isOnline"
-      ]
-    });
-
-    const items = inventory.items || [];
-    console.log(`📦 ${items.length} endpoints retornados pelo GravityZone`);
-
-    return items.map(item => ({
-      nome: item.name || item.entityName || "Desconhecido",
+    const items = result.items.map(item => ({
+      nome: item.name || "Desconhecido",
       ip: item.ip || "N/A",
-      status: item.securityStatus || item.status || "Indefinido",
+      status: item.securityStatus || "Indefinido",
       os: item.os || "N/A",
       ultimaAtualizacao: item.lastSeen || "N/A",
-      politica: item.policy || "Padrão",
+      politica: item.policyName || "Padrão",
       online: item.isOnline ? "Sim" : "Não"
     }));
+
+    console.log(`📦 ${items.length} endpoints encontrados no GravityZone`);
+    return items;
+
   } catch (err) {
     console.error("⚠️ Erro ao buscar endpoints do GravityZone:", err);
     return [];
