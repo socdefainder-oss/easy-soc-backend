@@ -9,7 +9,6 @@ if (!ACCESS_KEY) {
   console.warn("⚠️ GZ_ACCESS_KEY não definido. Configure no Render!");
 }
 
-// Função base para chamadas JSON-RPC
 async function callGZ(method, params = {}) {
   const body = {
     jsonrpc: "2.0",
@@ -38,7 +37,6 @@ async function callGZ(method, params = {}) {
     return {};
   }
 
-  // 🔍 Log detalhado para debug
   console.log("🧾 Resposta completa da API GravityZone:");
   console.log(JSON.stringify(data, null, 2));
 
@@ -48,22 +46,18 @@ async function callGZ(method, params = {}) {
   return data.result || {};
 }
 
-// 🔹 Função principal para buscar endpoints
+// 🔹 Busca endpoints gerenciados da rede
 export async function getEndpointsFromGravityZone() {
   try {
-    console.log("🔹 Chamando método getNetworkInventoryItems (modo debug)...");
+    console.log("🔹 Chamando método getNetworkInventoryItems (modo fixado)...");
 
-    // ✅ Uso correto segundo documentação:
+    // ✅ Parâmetros corretos (sem recursive)
     const result = await callGZ("getNetworkInventoryItems", {
       filters: {
-        type: ["managedEndpoint"], // Campo correto
-      },
-      options: {
-        recursive: true,
+        type: ["managedEndpoint"], // tipo aceito pela doc
       },
     });
 
-    // Log completo do retorno
     console.log("🧩 Resultado bruto:");
     console.log(JSON.stringify(result, null, 2));
 
