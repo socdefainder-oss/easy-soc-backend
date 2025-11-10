@@ -1,5 +1,5 @@
 // ==========================
-// EASY SOC BACKEND - DEFAINDER
+// EASY SOC BACKEND - defAInder
 // ==========================
 
 import express from "express";
@@ -14,7 +14,7 @@ const app = express();
 // 🔐 Middlewares
 // --------------------------
 app.use(cors({
-  origin: "*", // permite acesso de qualquer origem (para testes)
+  origin: "*", // permite acesso de qualquer origem (para testes e frontend)
   methods: ["GET", "POST"],
   allowedHeaders: ["Content-Type", "Authorization"]
 }));
@@ -34,7 +34,6 @@ app.listen(PORT, () => {
   console.log("====================================");
   console.log("🚀 EASY SOC BACKEND - defAInder");
   console.log(`✅ Servidor rodando na porta: ${PORT}`);
-  console.log("🌐 Endpoint de teste: http://localhost:" + PORT + "/api/resumo/1");
+  console.log(`🌐 Endpoint base: http://localhost:${PORT}/api`);
   console.log("====================================");
 });
-
