@@ -33,9 +33,16 @@ async function callGZ(method, params = {}) {
 
 export async function getEndpointsFromGravityZone() {
   try {
-    console.log("🔹 Chamando método getManagedEndpointsList...");
+    console.log("🔹 Chamando método getEntities...");
 
-    const result = await callGZ("getManagedEndpointsList", {});
+    const result = await callGZ("getEntities", {
+      filters: {
+        type: ["managedEndpoint"]
+      },
+      options: {
+        recursive: true
+      }
+    });
 
     if (!result.items || result.items.length === 0) {
       console.log("⚠️ Nenhum endpoint retornado. Resultado bruto:", JSON.stringify(result, null, 2));
