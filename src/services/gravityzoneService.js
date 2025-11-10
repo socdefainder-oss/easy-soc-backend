@@ -9,7 +9,6 @@ if (!ACCESS_KEY) {
   console.warn("⚠️ GZ_ACCESS_KEY não definido. Configure no Render!");
 }
 
-// Função genérica para chamar a API do GravityZone
 async function callGZ(method, params = {}) {
   const body = {
     jsonrpc: "2.0",
@@ -44,30 +43,27 @@ async function callGZ(method, params = {}) {
   if (data.error) {
     console.error("❌ Erro GravityZone:", data.error);
   }
+
   return data.result || {};
 }
 
-// 🔹 Busca endpoints gerenciados da rede
 export async function getEndpointsFromGravityZone() {
   try {
-    console.log("🔹 Chamando método getNetworkInventoryItems (modo final)...");
+    console.log("🔹 Chamando método getNetworkInventory (modo final fixado)...");
 
-    // ✅ Parâmetro correto conforme doc
-    const params = {
-      filters: {
-        entityType: "managedEndpoint", // formato aceito
-      },
-    };
-
-    const result = await callGZ("getNetworkInventoryItems", params);
+    // ✅ método correto, sem filtros
+    const result = await callGZ("getNetworkInventory", {
+      parentId: null,
+    });
 
     console.log("🧩 Resultado bruto:");
     console.log(JSON.stringify(result, null, 2));
 
+    // Pode vir em children / items / entities dependendo da conta
     const items =
       result?.items ||
-      result?.entities ||
       result?.children ||
+      result?.entities ||
       result?.networkItems ||
       [];
 
@@ -79,15 +75,17 @@ export async function getEndpointsFromGravityZone() {
       return [];
     }
 
-    const endpoints = items.map((item) => ({
-      nome: item.name || "Desconhecido",
-      ip: item.ip || "N/A",
-      status: item.securityStatus || "Indefinido",
-      os: item.os || "N/A",
-      ultimaAtualizacao: item.lastSeen || "N/A",
-      politica: item.policyName || "Padrão",
-      online: item.isOnline ? "Sim" : "Não",
-    }));
+    const endpoints = items
+      .map((item) => ({
+        nome: item.name || item.displayName || "Desconhecido",
+        ip: item.ip || item.lastIp || "N/A",
+        status: item.securityStatus || item.status || "Indefinido",
+        os: item.os || "N/A",
+        politica: item.policyName || "Padrão",
+        ultimaAtualizacao: item.lastSeen || "N/A",
+        online: item.isOnline ? "Sim" : "Não",
+      }))
+      .filter((e) => e.nome && e.nome !== "Desconhecido");
 
     console.log(`📦 ${endpoints.length} endpoints encontrados no GravityZone`);
     return endpoints;
