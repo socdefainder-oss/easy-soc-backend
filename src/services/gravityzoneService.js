@@ -9,6 +9,7 @@ if (!ACCESS_KEY) {
   console.warn("⚠️ GZ_ACCESS_KEY não definido. Configure no Render!");
 }
 
+// Função genérica para chamar a API do GravityZone
 async function callGZ(method, params = {}) {
   const body = {
     jsonrpc: "2.0",
@@ -49,14 +50,16 @@ async function callGZ(method, params = {}) {
 // 🔹 Busca endpoints gerenciados da rede
 export async function getEndpointsFromGravityZone() {
   try {
-    console.log("🔹 Chamando método getNetworkInventoryItems (modo fixado)...");
+    console.log("🔹 Chamando método getNetworkInventoryItems (modo final)...");
 
-    // ✅ Parâmetros corretos (sem recursive)
-    const result = await callGZ("getNetworkInventoryItems", {
+    // ✅ Parâmetro correto conforme doc
+    const params = {
       filters: {
-        type: ["managedEndpoint"], // tipo aceito pela doc
+        entityType: "managedEndpoint", // formato aceito
       },
-    });
+    };
+
+    const result = await callGZ("getNetworkInventoryItems", params);
 
     console.log("🧩 Resultado bruto:");
     console.log(JSON.stringify(result, null, 2));
