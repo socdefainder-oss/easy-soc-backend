@@ -1,45 +1,58 @@
-// src/services/gravityzoneService.js
-import axios from "axios";
-import dotenv from "dotenv";
-dotenv.config();
+// ==========================
+// SERVIÇO DE INTEGRAÇÃO - GRAVITYZONE
+// ==========================
 
-export async function obterResumoGravityZone() {
-  // monta Basic auth com a chave (Bitdefender usa Basic com chave:)
-  const auth = Buffer.from(`${process.env.GZ_ACCESS_KEY}:`).toString("base64");
+import fetch from "node-fetch";
 
-  const payload = {
-    jsonrpc: "2.0",
-    method: "getEndpointsList", // método exemplo: ajusta conforme a API do GZ
-    params: { page: 1, perPage: 200 },
-    id: 1
-  };
+const API_URL = process.env.GZ_API_URL || "https://cloud.gravityzone.bitdefender.com/api/v1.0/jsonrpc/network";
+const ACCESS_KEY = process.env.GZ_ACCESS_KEY;
 
+if (!ACCESS_KEY) {
+  console.warn("⚠️ GZ_ACCESS_KEY não definido. Configure no Render!");
+}
+
+export async function getEndpointsFromGravityZone() {
   try {
-    const resp = await axios.post(process.env.GZ_API_URL, payload, {
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Basic ${auth}`
+    const body = {
+      jsonrpc: "2.0",
+      method: "getNetworkInventoryItems",
+      params: {
+        filters: {}, // vazio = busca tudo
+        fields: ["name", "status", "ip", "lastSeen", "managedState"]
       },
-      timeout: 15000
-    });
-
-    const endpoints = resp.data.result?.items || [];
-
-    const total = endpoints.length;
-    const managed = endpoints.filter(e => (e.status || "").toLowerCase().includes("managed")).length;
-    const atRisk = endpoints.filter(e => (e.status || "").toLowerCase().includes("at risk")).length;
-    const offline = endpoints.filter(e => (e.status || "").toLowerCase().includes("offline")).length;
-
-    return {
-      maquinasProtegidas: `${managed} de ${total} Seguras`,
-      vulnerabilidades: `${atRisk} Encontradas`,
-      riscos: `${offline} Offline`,
-      incidentes: "Nenhum",
-      detalhes: { endpoints } // retorna a lista completa para exibir na UI
+      id: "1"
     };
 
+    const response = await fetch(API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Basic ${Buffer.from(ACCESS_KEY + ":").toString("base64")}`
+      },
+      body: JSON.stringify(body)
+    });
+
+    const data = await response.json();
+
+    // 🧠 Log de depuração (importante para testar)
+    console.log("🔍 GravityZone response:", JSON.stringify(data, null, 2));
+
+    if (data.error) {
+      console.error("❌ Erro na API GravityZone:", data.error);
+      return [];
+    }
+
+    const items = data.result?.items || [];
+
+    return items.map(item => ({
+      nome: item.name || "Desconhecido",
+      status: item.status || item.managedState || "Indefinido",
+      ip: item.ip || "N/A",
+      ultimaAtualizacao: item.lastSeen || "N/A"
+    }));
+
   } catch (err) {
-    console.error("Erro ao consultar GravityZone:", err.response?.data || err.message);
-    throw err;
+    console.error("⚠️ Erro ao buscar endpoints do GravityZone:", err);
+    return [];
   }
 }

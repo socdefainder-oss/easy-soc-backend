@@ -1,60 +1,62 @@
+// ==========================
+// CONTROLLER PRINCIPAL - CLIENTES
+// ==========================
+
 import jwt from "jsonwebtoken";
-import { obterResumoGravityZone } from "../services/gravityzoneService.js";
+import dotenv from "dotenv";
+import { getEndpointsFromGravityZone } from "../services/gravityzoneService.js";
 
-/**
- * Controller responsável por autenticar o token JWT,
- * consultar os dados da GravityZone e retornar o resumo
- * que será exibido no painel do Easy SOC.
- */
-export const getResumo = async (req, res) => {
-  try {
-    // 1️⃣ Verifica se o token JWT foi enviado
-    const token = req.headers.authorization?.split(" ")[1];
-    if (!token) {
-      return res.status(403).json({ message: "Token de autenticação ausente" });
-    }
+dotenv.config();
 
-    // 2️⃣ Valida o token usando a chave secreta JWT
-    jwt.verify(token, process.env.JWT_SECRET || "chave_teste");
+const JWT_SECRET = process.env.JWT_SECRET || "segredo_local_teste";
 
-    // 3️⃣ Consulta a API do GravityZone
-    const resumo = await obterResumoGravityZone();
+// 🧠 Mock de clientes (poderia vir de um banco real)
+const clientes = [
+  { id: 1, nome: "Empresa Alpha", email: "empresa@alpha.com", senha: "12345" }
+];
 
-    // 4️⃣ Retorna os dados ao frontend
-    return res.status(200).json(resumo);
-  } catch (error) {
-    console.error("Erro ao obter resumo da GravityZone:", error.message || error);
-    return res.status(500).json({
-      message: "Erro ao obter dados da GravityZone. Verifique logs do servidor.",
-    });
-  }
+// ------------------------------------------------------
+// 🔐 LOGIN - retorna token de acesso
+// ------------------------------------------------------
+export const login = (req, res) => {
+  const { email, senha } = req.body;
+
+  const cliente = clientes.find(c => c.email === email && c.senha === senha);
+  if (!cliente) return res.status(401).json({ message: "Credenciais inválidas" });
+
+  const token = jwt.sign({ id: cliente.id }, JWT_SECRET, { expiresIn: "2h" });
+
+  res.json({
+    id: cliente.id,
+    nome: cliente.nome,
+    email: cliente.email,
+    token
+  });
 };
 
-/**
- * Controller de exemplo para login — 
- * gera token JWT para testar a autenticação no frontend.
- */
-export const login = async (req, res) => {
+// ------------------------------------------------------
+// 📊 RESUMO - traz dados reais da API GravityZone
+// ------------------------------------------------------
+export const getResumo = async (req, res) => {
   try {
-    const { email, senha } = req.body;
+    const endpoints = await getEndpointsFromGravityZone();
 
-    // Simulação de login básico
-    if (email === "empresa@alpha.com" && senha === "12345") {
-      const token = jwt.sign({ id: 1, email }, process.env.JWT_SECRET || "chave_teste", {
-        expiresIn: "2h",
-      });
+    const total = endpoints.length;
+    const seguras = endpoints.filter(e => e.status === "OK").length;
+    const vulneraveis = total - seguras;
 
-      return res.status(200).json({
-        id: 1,
-        nome: "Empresa Alpha",
-        email,
-        token,
-      });
-    } else {
-      return res.status(401).json({ message: "Credenciais inválidas" });
-    }
+    res.json({
+      maquinasTotais: total,
+      maquinasSeguras: seguras,
+      vulnerabilidades: vulneraveis,
+      riscos: vulneraveis,
+      incidentes: 0,
+      detalhes: {
+        maquinas: endpoints
+      }
+    });
   } catch (error) {
-    console.error("Erro no login:", error.message || error);
-    return res.status(500).json({ message: "Erro interno no login" });
+    console.error("Erro ao gerar resumo:", error);
+    res.status(500).json({ message: "Erro ao conectar ao GravityZone" });
   }
 };
