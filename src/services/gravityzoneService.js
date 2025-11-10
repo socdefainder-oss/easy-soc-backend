@@ -1,5 +1,5 @@
 // ==========================
-// SERVIÇO DE INTEGRAÇÃO - GRAVITYZONE
+// SERVIÇO DE INTEGRAÇÃO - GRAVITYZONE (v2 completo)
 // ==========================
 
 import fetch from "node-fetch";
@@ -17,8 +17,24 @@ export async function getEndpointsFromGravityZone() {
       jsonrpc: "2.0",
       method: "getNetworkInventoryItems",
       params: {
-        filters: {}, // vazio = busca tudo
-        fields: ["name", "status", "ip", "lastSeen", "managedState"]
+        filters: {
+          // força o retorno de todas as entidades
+          "entityType": ["managedEndpoint", "machine"],
+          "status": ["active", "inactive"]
+        },
+        fields: [
+          "name",
+          "fqdn",
+          "entityName",
+          "ip",
+          "status",
+          "managedState",
+          "securityStatus",
+          "lastSeen",
+          "os",
+          "policy",
+          "isOnline"
+        ]
       },
       id: "1"
     };
@@ -33,9 +49,7 @@ export async function getEndpointsFromGravityZone() {
     });
 
     const data = await response.json();
-
-    // 🧠 Log de depuração (importante para testar)
-    console.log("🔍 GravityZone response:", JSON.stringify(data, null, 2));
+    console.log("🔍 GravityZone API Response:", JSON.stringify(data, null, 2));
 
     if (data.error) {
       console.error("❌ Erro na API GravityZone:", data.error);
@@ -45,10 +59,13 @@ export async function getEndpointsFromGravityZone() {
     const items = data.result?.items || [];
 
     return items.map(item => ({
-      nome: item.name || "Desconhecido",
-      status: item.status || item.managedState || "Indefinido",
+      nome: item.name || item.entityName || "Desconhecido",
       ip: item.ip || "N/A",
-      ultimaAtualizacao: item.lastSeen || "N/A"
+      status: item.securityStatus || item.status || "Indefinido",
+      os: item.os || "N/A",
+      ultimaAtualizacao: item.lastSeen || "N/A",
+      politica: item.policy || "Padrão",
+      online: item.isOnline ? "Sim" : "Não"
     }));
 
   } catch (err) {
