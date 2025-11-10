@@ -1,62 +1,61 @@
-// ==========================
-// CONTROLLER PRINCIPAL - CLIENTES
-// ==========================
+import { getSheetData } from "../services/googleSheetService.js";
 
-import jwt from "jsonwebtoken";
-import dotenv from "dotenv";
-import { getEndpointsFromGravityZone } from "../services/gravityzoneService.js";
-
-dotenv.config();
-
-const JWT_SECRET = process.env.JWT_SECRET || "segredo_local_teste";
-
-// 🧠 Mock de clientes (poderia vir de um banco real)
-const clientes = [
-  { id: 1, nome: "Empresa Alpha", email: "empresa@alpha.com", senha: "12345" }
-];
-
-// ------------------------------------------------------
-// 🔐 LOGIN - retorna token de acesso
-// ------------------------------------------------------
-export const login = (req, res) => {
-  const { email, senha } = req.body;
-
-  const cliente = clientes.find(c => c.email === email && c.senha === senha);
-  if (!cliente) return res.status(401).json({ message: "Credenciais inválidas" });
-
-  const token = jwt.sign({ id: cliente.id }, JWT_SECRET, { expiresIn: "2h" });
-
-  res.json({
-    id: cliente.id,
-    nome: cliente.nome,
-    email: cliente.email,
-    token
-  });
-};
-
-// ------------------------------------------------------
-// 📊 RESUMO - traz dados reais da API GravityZone
-// ------------------------------------------------------
-export const getResumo = async (req, res) => {
+// 🔹 Controlador de resumo por cliente
+export async function getResumoCliente(req, res) {
   try {
-    const endpoints = await getEndpointsFromGravityZone();
+    const cliente = req.params.id?.toLowerCase().trim();
+    console.log(`🔹 Gerando resumo para cliente: ${cliente}`);
 
-    const total = endpoints.length;
-    const seguras = endpoints.filter(e => e.status === "OK").length;
-    const vulneraveis = total - seguras;
+    const dados = await getSheetData(); // lê a planilha inteira
+    console.log("📄 Total de linhas lidas:", dados.length);
 
-    res.json({
+    // Filtra só o cliente solicitado
+    const maquinas = dados.filter(
+      (m) => m.Cliente && m.Cliente.toLowerCase().trim() === cliente
+    );
+
+    console.log(`📊 Máquinas encontradas para ${cliente}:`, maquinas.length);
+
+    if (maquinas.length === 0) {
+      return res.status(404).json({
+        erro: true,
+        mensagem: `Nenhum dado encontrado para o cliente ${cliente}`,
+        detalhes: [],
+      });
+    }
+
+    // Faz resumo geral
+    const total = maquinas.length;
+    const seguras = maquinas.filter((m) => m.Status === "Seguro").length;
+    const vulnerabilidades = maquinas.reduce(
+      (acc, m) => acc + parseInt(m.Vulnerabilidades || 0),
+      0
+    );
+    const riscos = maquinas.reduce(
+      (acc, m) => acc + parseInt(m.Riscos || 0),
+      0
+    );
+    const incidentes = maquinas.reduce(
+      (acc, m) => acc + parseInt(m.Incidentes || 0),
+      0
+    );
+
+    const resumo = {
       maquinasTotais: total,
       maquinasSeguras: seguras,
-      vulnerabilidades: vulneraveis,
-      riscos: vulneraveis,
-      incidentes: 0,
-      detalhes: {
-        maquinas: endpoints
-      }
-    });
+      vulnerabilidades,
+      riscos,
+      incidentes,
+      detalhes: { maquinas },
+    };
+
+    return res.json(resumo);
   } catch (error) {
-    console.error("Erro ao gerar resumo:", error);
-    res.status(500).json({ message: "Erro ao conectar ao GravityZone" });
+    console.error("❌ Erro ao gerar resumo:", error);
+    return res.status(500).json({
+      erro: true,
+      mensagem: "Erro interno ao gerar resumo",
+      detalhes: error.message,
+    });
   }
-};
+}
