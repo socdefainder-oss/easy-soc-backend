@@ -9,6 +9,7 @@ if (!ACCESS_KEY) {
   console.warn("⚠️ GZ_ACCESS_KEY não definido. Configure no Render!");
 }
 
+// Função base para chamadas JSON-RPC
 async function callGZ(method, params = {}) {
   const body = {
     jsonrpc: "2.0",
@@ -16,6 +17,8 @@ async function callGZ(method, params = {}) {
     params,
     id: "1",
   };
+
+  console.log(`➡️ Enviando requisição ${method}...`);
 
   const response = await fetch(API_URL, {
     method: "POST",
@@ -26,7 +29,7 @@ async function callGZ(method, params = {}) {
     body: JSON.stringify(body),
   });
 
-  const text = await response.text(); // 👈 Captura resposta bruta
+  const text = await response.text();
   let data;
   try {
     data = JSON.parse(text);
@@ -35,7 +38,7 @@ async function callGZ(method, params = {}) {
     return {};
   }
 
-  // 🔍 Log detalhado da resposta completa
+  // 🔍 Log detalhado para debug
   console.log("🧾 Resposta completa da API GravityZone:");
   console.log(JSON.stringify(data, null, 2));
 
@@ -45,33 +48,41 @@ async function callGZ(method, params = {}) {
   return data.result || {};
 }
 
+// 🔹 Função principal para buscar endpoints
 export async function getEndpointsFromGravityZone() {
   try {
     console.log("🔹 Chamando método getNetworkInventoryItems (modo debug)...");
 
+    // ✅ Uso correto segundo documentação:
     const result = await callGZ("getNetworkInventoryItems", {
       filters: {
-        entityType: ["managedEndpoint"],
+        type: ["managedEndpoint"], // Campo correto
+      },
+      options: {
+        recursive: true,
       },
     });
 
-    // 🔍 Log do objeto result para análise
-    console.log("🧩 Resultado parcial de getNetworkInventoryItems:");
+    // Log completo do retorno
+    console.log("🧩 Resultado bruto:");
     console.log(JSON.stringify(result, null, 2));
 
-    // Caso venha em outra chave
-    const endpointsRaw =
-      result.items || result.entities || result.children || result || [];
+    const items =
+      result?.items ||
+      result?.entities ||
+      result?.children ||
+      result?.networkItems ||
+      [];
 
-    if (!Array.isArray(endpointsRaw) || endpointsRaw.length === 0) {
+    if (!Array.isArray(items) || items.length === 0) {
       console.log(
-        "⚠️ Nenhum endpoint válido encontrado. Estrutura do retorno:",
+        "⚠️ Nenhum endpoint encontrado. Estrutura do retorno:",
         JSON.stringify(Object.keys(result || {}), null, 2)
       );
       return [];
     }
 
-    const endpoints = endpointsRaw.map((item) => ({
+    const endpoints = items.map((item) => ({
       nome: item.name || "Desconhecido",
       ip: item.ip || "N/A",
       status: item.securityStatus || "Indefinido",
