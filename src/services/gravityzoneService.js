@@ -5,11 +5,6 @@ const API_URL =
   "https://cloud.gravityzone.bitdefender.com/api/v1.0/jsonrpc/network";
 const ACCESS_KEY = process.env.GZ_ACCESS_KEY;
 
-if (!ACCESS_KEY) {
-  console.warn("⚠️ GZ_ACCESS_KEY não definido. Configure no Render!");
-}
-
-// Função genérica para chamada da API Bitdefender
 async function callGZ(method, params = {}) {
   const body = {
     jsonrpc: "2.0",
@@ -38,65 +33,68 @@ async function callGZ(method, params = {}) {
     return {};
   }
 
-  console.log("🧾 Resposta completa da API GravityZone:");
-  console.log(JSON.stringify(data, null, 2));
-
-  if (data.error) {
-    console.error("❌ Erro GravityZone:", data.error);
-  }
-
+  if (data.error) console.error("❌ Erro GravityZone:", data.error);
   return data.result || {};
 }
 
-// 🔹 Obter endpoints do GravityZone com fallback automático
+// 🔹 Busca endpoints em profundidade (modo recursivo)
 export async function getEndpointsFromGravityZone() {
   try {
-    console.log("🔹 Chamando método getManagedEndpointsList (modo final fixado)...");
+    console.log("🔹 Chamando método getManagedEndpointsList (modo recursivo)...");
 
-    // ✅ Primeiro método (padrão para instâncias modernas)
-    let result = await callGZ("getManagedEndpointsList", {
-      filters: {
-        status: ["managed", "unmanaged"],
-      },
+    // Primeiro: tenta pegar todos os endpoints
+    const result = await callGZ("getManagedEndpointsList", {
+      page: 1,
+      perPage: 200,
       params: {
         includeSecurityInfo: true,
       },
-      page: 1,
-      perPage: 100,
     });
 
-    // Se o método não existir, tenta o fallback antigo
-    if (!result || Object.keys(result).length === 0) {
-      console.log("⚠️ Fallback: tentando getNetworkInventory...");
-      result = await callGZ("getNetworkInventory", { parentId: null });
-    }
-
-    // Se ainda não vier nada, tenta o terceiro método de inventário cru
-    if (!result || Object.keys(result).length === 0) {
-      console.log("⚠️ Fallback 2: tentando getNetworkInventoryItems...");
-      result = await callGZ("getNetworkInventoryItems", {});
-    }
-
-    console.log("🧩 Resultado bruto:");
-    console.log(JSON.stringify(result, null, 2));
-
+    // Alguns tenants retornam em `result.items` e outros dentro de children
     const items =
       result?.items ||
       result?.entities ||
       result?.children ||
-      result?.endpoints ||
       result?.data ||
       [];
 
-    if (!Array.isArray(items) || items.length === 0) {
-      console.log(
-        "⚠️ Nenhum endpoint encontrado. Estrutura do retorno:",
-        JSON.stringify(Object.keys(result || {}), null, 2)
+    // Se só vier “Companies” e “Network”, tenta o próximo nível
+    let endpoints = items.filter(
+      (i) =>
+        i.entityType === "endpoint" ||
+        i.type === "endpoint" ||
+        i.ip ||
+        i.os ||
+        (i.name && !["Companies", "Network"].includes(i.name))
+    );
+
+    if (endpoints.length === 0) {
+      console.log("⚠️ Nenhum endpoint direto. Tentando explorar subníveis...");
+      const sub = await callGZ("getNetworkInventoryItems", {
+        parentId: null,
+      });
+      const subItems =
+        sub?.items ||
+        sub?.entities ||
+        sub?.children ||
+        sub?.data ||
+        [];
+      endpoints = subItems.filter(
+        (i) =>
+          i.entityType === "endpoint" ||
+          i.type === "endpoint" ||
+          i.ip ||
+          (i.name && !["Companies", "Network"].includes(i.name))
       );
+    }
+
+    if (!endpoints || endpoints.length === 0) {
+      console.log("⚠️ Ainda sem endpoints — verifique permissões de rede.");
       return [];
     }
 
-    const endpoints = items.map((item) => ({
+    const mapped = endpoints.map((item) => ({
       nome: item.name || item.displayName || "Desconhecido",
       ip: item.ip || item.lastIp || "N/A",
       status: item.securityStatus || item.status || "Indefinido",
@@ -106,8 +104,8 @@ export async function getEndpointsFromGravityZone() {
       online: item.isOnline ? "Sim" : "Não",
     }));
 
-    console.log(`📦 ${endpoints.length} endpoints encontrados no GravityZone`);
-    return endpoints;
+    console.log(`📦 ${mapped.length} endpoints reais encontrados`);
+    return mapped;
   } catch (err) {
     console.error("⚠️ Erro ao buscar endpoints do GravityZone:", err);
     return [];
