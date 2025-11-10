@@ -33,14 +33,11 @@ async function callGZ(method, params = {}) {
 
 export async function getEndpointsFromGravityZone() {
   try {
-    console.log("🔹 Chamando método getEntities...");
+    console.log("🔹 Chamando método getNetworkInventoryItems...");
 
-    const result = await callGZ("getEntities", {
+    const result = await callGZ("getNetworkInventoryItems", {
       filters: {
-        type: ["managedEndpoint"]
-      },
-      options: {
-        recursive: true
+        entityType: ["managedEndpoint"]
       }
     });
 
@@ -49,7 +46,7 @@ export async function getEndpointsFromGravityZone() {
       return [];
     }
 
-    const items = result.items.map(item => ({
+    const endpoints = result.items.map(item => ({
       nome: item.name || "Desconhecido",
       ip: item.ip || "N/A",
       status: item.securityStatus || "Indefinido",
@@ -59,8 +56,8 @@ export async function getEndpointsFromGravityZone() {
       online: item.isOnline ? "Sim" : "Não"
     }));
 
-    console.log(`📦 ${items.length} endpoints encontrados no GravityZone`);
-    return items;
+    console.log(`📦 ${endpoints.length} endpoints encontrados no GravityZone`);
+    return endpoints;
 
   } catch (err) {
     console.error("⚠️ Erro ao buscar endpoints do GravityZone:", err);
