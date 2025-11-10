@@ -1,0 +1,4 @@
+# Ignorar arquivos sensíveis e temporários
+node_modules/
+.env
+credentials.json
