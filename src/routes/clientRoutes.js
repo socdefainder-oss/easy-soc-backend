@@ -1,22 +1,15 @@
-import express from "express";
-import { login, getResumo } from "../controllers/clientController.js";
+import { Router } from "express";
+import { getResumo, pingSheet } from "../controllers/clientController.js";
 
-const router = express.Router();
+const router = Router();
 
-/**
- * 🌡 Health check (para o Render saber que está tudo ok)
- */
-router.get("/health", (req, res) => res.json({ ok: true }));
+// Health / debug
+router.get("/ping", (req, res) => res.json({ ok: true }));
 
-/**
- * 🔐 Rota de login (teste)
- */
-router.post("/login", login);
+// Diagnóstico rápido da planilha
+router.get("/sheet/ping", pingSheet);
 
-/**
- * 📊 Rota de resumo — busca dados da planilha
- * Exemplo: GET /api/resumo/1
- */
+// Resumo por clienteId (1..n)
 router.get("/resumo/:id", getResumo);
 
 export default router;
