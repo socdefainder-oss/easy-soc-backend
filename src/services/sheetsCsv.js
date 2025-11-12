@@ -1,45 +1,50 @@
+// src/services/sheetsCsv.js
 import axios from "axios";
-import { parse } from "csv-parse/sync";
+import Papa from "papaparse";
+import dotenv from "dotenv";
 
-const requiredHeaders = [
-  "Cliente",
-  "Hostname",
-  "Status",
-  "Vulnerabilidades",
-  "Riscos",
-  "Incidentes"
-];
+dotenv.config();
 
-// Lê CSV público do Google Sheets e retorna array de objetos
-export async function getSheetRowsCsv(sheetId, gid = "0") {
-  const url = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}`;
+const GSHEET_ID = process.env.GSHEET_ID;
 
-  const { data } = await axios.get(url, { responseType: "arraybuffer" });
+/**
+ * 🔗 Gera a URL pública para exportar uma aba em CSV
+ */
+function buildCsvUrl(gid = "0") {
+  if (!GSHEET_ID) throw new Error("GSHEET_ID não definido no .env");
+  return `https://docs.google.com/spreadsheets/d/${GSHEET_ID}/export?format=csv&gid=${gid}`;
+}
 
-  // Parse do CSV (auto_detect, com header)
-  const records = parse(data, {
-    columns: true,
-    skip_empty_lines: true
-  });
+/**
+ * 📥 Lê a planilha pública (CSV) e converte em JSON
+ */
+export async function getSheetData(gid = "0") {
+  try {
+    const url = buildCsvUrl(gid);
+    console.log(`📊 Buscando planilha: ${url}`);
 
-  // Normaliza nomes de cabeçalhos (tira espaços extras)
-  const normalized = records.map((row) => {
-    const obj = {};
-    Object.keys(row).forEach((k) => {
-      const key = String(k).trim();
-      obj[key] = String(row[k] ?? "").trim();
+    const response = await axios.get(url, {
+      responseType: "text",
+      maxRedirects: 5,
+      headers: { "User-Agent": "Mozilla/5.0" },
     });
-    return obj;
-  });
 
-  // Validação leve: checa se os headers principais existem
-  const headersOk = requiredHeaders.every((h) => normalized[0]?.hasOwnProperty(h));
-  if (!headersOk) {
-    const keys = normalized[0] ? Object.keys(normalized[0]) : [];
-    throw new Error(
-      `Cabeçalhos inesperados. Esperado: ${requiredHeaders.join(", ")} | Encontrado: ${keys.join(", ")}`
-    );
+    if (response.status !== 200) {
+      console.error(`❌ Falha ao acessar planilha (HTTP ${response.status})`);
+      return [];
+    }
+
+    const csv = response.data;
+    const parsed = Papa.parse(csv, {
+      header: true,
+      skipEmptyLines: true,
+      transformHeader: (h) => h.trim(),
+    });
+
+    console.log(`✅ CSV lido com ${parsed.data.length} linhas.`);
+    return parsed.data || [];
+  } catch (err) {
+    console.error("❌ Erro ao ler planilha CSV:", err.message);
+    return [];
   }
-
-  return normalized;
 }

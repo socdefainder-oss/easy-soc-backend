@@ -1,66 +1,89 @@
-import { getSheetRowsCsv } from "../services/sheetsCsv.js";
+// src/controllers/clientController.js
+import { getSheetData } from "../services/sheetsCsv.js";
 
-const CLIENTES = ["alphatech", "betacorp", "client3", "client4"];
+/**
+ * 🔐 Login básico (modo de testes)
+ */
+export const login = async (req, res) => {
+  const { email, senha } = req.body;
 
-const toInt = (v) => {
-  const n = parseInt(String(v || "0"), 10);
-  return Number.isFinite(n) ? n : 0;
+  if (email === "empresa@alpha.com" && senha === "12345") {
+    return res.json({
+      token: "abc123",
+      nome: "AlphaTech",
+      id: 1,
+    });
+  }
+
+  return res.status(401).json({ erro: "Credenciais inválidas" });
 };
 
+/**
+ * 📊 Obtém o resumo de endpoints de um cliente específico (por nome)
+ * Exemplo: /api/resumo/alphatech
+ */
 export const getResumo = async (req, res) => {
   try {
-    const sheetId = process.env.GSHEET_ID;
-    if (!sheetId) {
-      return res.status(500).json({ erro: "GSHEET_ID ausente no .env" });
-    }
+    const clienteNome = (req.params.cliente || "").toLowerCase().trim();
 
-    const gid = "0"; // ajuste se sua aba 'endpoints' tiver outro gid
-    const clienteId = parseInt(req.params.id, 10);
-    const clienteNome = CLIENTES[clienteId - 1];
     if (!clienteNome) {
-      return res.status(400).json({ erro: "clienteId inválido" });
+      return res.status(400).json({ erro: "Cliente não informado" });
     }
 
-    console.log(`📄 Lendo planilha CSV pública para cliente: ${clienteNome}`);
-    const rows = await getSheetRowsCsv(sheetId, gid);
-    console.log(`✅ Linhas obtidas: ${rows.length}`);
+    console.log(`📄 Lendo planilha para cliente: ${clienteNome}`);
 
-    const dadosCliente = rows.filter(
-      (r) => (r.Cliente || "").toLowerCase() === clienteNome
+    // Lê os dados da planilha
+    const linhas = await getSheetData("0"); // gid da aba "endpoints"
+
+    if (!linhas || linhas.length === 0) {
+      console.error("❌ Nenhum dado retornado da planilha. Verifique o acesso ou o range.");
+      return res.status(500).json({
+        erro: "Falha ao obter dados da planilha (retorno vazio)",
+      });
+    }
+
+    console.log(`✅ Planilha lida com sucesso: ${linhas.length} linhas encontradas.`);
+
+    // Filtra apenas os registros do cliente
+    const dadosCliente = linhas.filter(
+      (r) => (r.Cliente || "").toLowerCase().trim() === clienteNome
     );
 
-    const maquinasTotais = dadosCliente.length;
-    const maquinasSeguras = dadosCliente.filter(
-      (r) => (r.Status || "").toLowerCase() === "seguro"
+    if (dadosCliente.length === 0) {
+      console.warn(`⚠️ Nenhum registro encontrado para o cliente: ${clienteNome}`);
+      return res.status(404).json({ erro: "Cliente não encontrado" });
+    }
+
+    // Função auxiliar para converter strings em número
+    const toInt = (v) => parseInt(v || "0", 10) || 0;
+
+    // Calcula os totais e somatórios
+    const total = dadosCliente.length;
+    const seguras = dadosCliente.filter(
+      (r) => (r.Status || "").toLowerCase().trim() === "seguro"
     ).length;
-
-    const vulnerabilidades = dadosCliente.reduce((s, r) => s + toInt(r.Vulnerabilidades), 0);
+    const vulnerabilidades = dadosCliente.reduce(
+      (s, r) => s + toInt(r.Vulnerabilidades),
+      0
+    );
     const riscos = dadosCliente.reduce((s, r) => s + toInt(r.Riscos), 0);
-    const incidentes = dadosCliente.reduce((s, r) => s + toInt(r.Incidentes), 0);
+    const incidentes = dadosCliente.reduce(
+      (s, r) => s + toInt(r.Incidentes),
+      0
+    );
 
+    // Retorna o resumo formatado
     return res.json({
-      maquinasTotais,
-      maquinasSeguras,
+      cliente: clienteNome,
+      maquinasTotais: total,
+      maquinasSeguras: seguras,
       vulnerabilidades,
       riscos,
       incidentes,
-      detalhes: { maquinas: dadosCliente }
+      detalhes: { maquinas: dadosCliente },
     });
   } catch (err) {
-    console.error("❌ Erro no getResumo:", err.message);
-    return res.status(500).json({ erro: "Falha ao ler a planilha CSV pública", detalhe: err.message });
-  }
-};
-
-export const pingSheet = async (req, res) => {
-  try {
-    const sheetId = process.env.GSHEET_ID;
-    if (!sheetId) {
-      return res.status(500).json({ erro: "GSHEET_ID ausente no .env" });
-    }
-    const rows = await getSheetRowsCsv(sheetId, "0");
-    return res.json({ ok: true, linhas: rows.length, amostra: rows.slice(0, 3) });
-  } catch (err) {
-    return res.status(500).json({ ok: false, erro: err.message });
+    console.error("❌ Erro ao gerar resumo:", err);
+    res.status(500).json({ erro: "Falha ao gerar resumo" });
   }
 };

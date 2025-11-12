@@ -8,15 +8,15 @@
     "start": "node src/index.js"
   },
   "dependencies": {
-    "axios": "^1.7.7",
+    "axios": "^1.13.2",
+    "cors": "^2.8.5",
     "csv-parse": "^5.6.0",
-    "dotenv": "^16.4.5",
+    "dotenv": "^16.6.1",
     "express": "^4.21.1",
     "morgan": "^1.10.0",
-    "cors": "^2.8.5"
+    "papaparse": "^5.5.3"
   },
   "description": "",
-  "devDependencies": {},
   "repository": {
     "type": "git",
     "url": "git+https://github.com/socdefainder-oss/easy-soc-backend.git"

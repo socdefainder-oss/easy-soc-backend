@@ -1,15 +1,10 @@
-import { Router } from "express";
-import { getResumo, pingSheet } from "../controllers/clientController.js";
+// src/routes/clientRoutes.js
+import express from "express";
+import { getResumo } from "../controllers/clientController.js";
 
-const router = Router();
+const router = express.Router();
 
-// Health / debug
-router.get("/ping", (req, res) => res.json({ ok: true }));
-
-// Diagnóstico rápido da planilha
-router.get("/sheet/ping", pingSheet);
-
-// Resumo por clienteId (1..n)
-router.get("/resumo/:id", getResumo);
+// 🔹 Rota principal de resumo (por nome do cliente)
+router.get("/resumo/:cliente", getResumo);
 
 export default router;
