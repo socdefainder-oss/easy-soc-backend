@@ -1,15 +1,28 @@
 import { getSheetData } from "../services/googleSheetService.js";
 
-// Login básico para testes (mantido)
+/**
+ * 🔐 Login básico (modo de testes)
+ * Simula autenticação — futuramente substituído por JWT real.
+ */
 export async function login(req, res) {
   const { email, senha } = req.body;
+
+  // Login de teste (apenas simulação)
   if (email === "empresa@alpha.com" && senha === "12345") {
-    return res.json({ token: "abc123", nome: "AlphaTech", id: 1 });
+    return res.json({
+      token: "abc123",
+      nome: "AlphaTech",
+      id: 1,
+    });
   }
-  res.status(401).json({ erro: "Credenciais inválidas" });
+
+  return res.status(401).json({ erro: "Credenciais inválidas" });
 }
 
-// Função principal: leitura da planilha
+/**
+ * 📊 Obtém o resumo de endpoints de um cliente específico
+ * com base na planilha do Google Sheets
+ */
 export async function getResumo(req, res) {
   try {
     const clienteId = parseInt(req.params.id);
@@ -18,7 +31,9 @@ export async function getResumo(req, res) {
 
     console.log(`📄 Lendo planilha para cliente: ${clienteNome}`);
 
+    // Lê os dados da planilha
     const linhas = await getSheetData("endpoints!A1:Z1000");
+
     if (!linhas.length) {
       return res.json({
         maquinasTotais: 0,
@@ -30,7 +45,7 @@ export async function getResumo(req, res) {
       });
     }
 
-    // Filtra o cliente
+    // Filtra apenas os registros do cliente
     const dadosCliente = linhas.filter(
       (r) => (r.Cliente || "").toLowerCase() === clienteNome
     );
@@ -52,6 +67,7 @@ export async function getResumo(req, res) {
       0
     );
 
+    // Retorna resumo formatado
     return res.json({
       maquinasTotais: total,
       maquinasSeguras: seguras,

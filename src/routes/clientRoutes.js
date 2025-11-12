@@ -1,9 +1,22 @@
 import express from "express";
-import { getResumoCliente } from "../controllers/clientController.js";
+import { login, getResumo } from "../controllers/clientController.js";
 
 const router = express.Router();
 
-// Endpoint: /api/resumo/:id
-router.get("/resumo/:id", getResumoCliente);
+/**
+ * 🌡 Health check (para o Render saber que está tudo ok)
+ */
+router.get("/health", (req, res) => res.json({ ok: true }));
+
+/**
+ * 🔐 Rota de login (teste)
+ */
+router.post("/login", login);
+
+/**
+ * 📊 Rota de resumo — busca dados da planilha
+ * Exemplo: GET /api/resumo/1
+ */
+router.get("/resumo/:id", getResumo);
 
 export default router;
