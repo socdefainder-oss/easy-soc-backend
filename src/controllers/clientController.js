@@ -1,66 +1,76 @@
 // src/controllers/clientController.js
+import jwt from "jsonwebtoken";
+import dotenv from "dotenv";
 import { getSheetData } from "../services/sheetsCsv.js";
 
+dotenv.config();
+
 /**
- * 🔐 Login básico (modo de testes)
+ * 🔐 Login — gera token JWT
  */
 export const login = async (req, res) => {
   const { email, senha } = req.body;
 
-  if (email === "empresa@alpha.com" && senha === "12345") {
-    return res.json({
-      token: "abc123",
-      nome: "AlphaTech",
-      id: 1,
-    });
+  // Simulação de usuários (poderá vir de planilha ou banco depois)
+  const usuarios = [
+    { email: "empresa@alpha.com", senha: "12345", cliente: "alphatech" },
+    { email: "empresa@beta.com", senha: "12345", cliente: "betacorp" },
+  ];
+
+  const user = usuarios.find(
+    (u) => u.email === email && u.senha === senha
+  );
+
+  if (!user) {
+    return res.status(401).json({ erro: "Credenciais inválidas" });
   }
 
-  return res.status(401).json({ erro: "Credenciais inválidas" });
+  // Gera token JWT
+  const token = jwt.sign(
+    { cliente: user.cliente },
+    process.env.JWT_SECRET,
+    { expiresIn: "8h" }
+  );
+
+  return res.json({
+    token,
+    cliente: user.cliente,
+  });
 };
 
 /**
- * 📊 Obtém o resumo de endpoints de um cliente específico (por nome)
- * Exemplo: /api/resumo/alphatech
+ * 📊 Retorna dados do cliente logado (autenticado via JWT)
  */
 export const getResumo = async (req, res) => {
   try {
     const clienteNome = (req.params.cliente || "").toLowerCase().trim();
+    const tokenCliente = req.user?.cliente?.toLowerCase();
 
-    if (!clienteNome) {
-      return res.status(400).json({ erro: "Cliente não informado" });
+    // Impede acesso de cliente A aos dados de cliente B
+    if (clienteNome !== tokenCliente) {
+      return res.status(403).json({ erro: "Acesso negado a este cliente" });
     }
 
     console.log(`📄 Lendo planilha para cliente: ${clienteNome}`);
-
-    // Lê os dados da planilha
-    const linhas = await getSheetData("0"); // gid da aba "endpoints"
+    const linhas = await getSheetData("0");
 
     if (!linhas || linhas.length === 0) {
-      console.error("❌ Nenhum dado retornado da planilha. Verifique o acesso ou o range.");
-      return res.status(500).json({
-        erro: "Falha ao obter dados da planilha (retorno vazio)",
-      });
+      return res.status(500).json({ erro: "Falha ao obter dados da planilha" });
     }
 
-    console.log(`✅ Planilha lida com sucesso: ${linhas.length} linhas encontradas.`);
-
-    // Filtra apenas os registros do cliente
     const dadosCliente = linhas.filter(
       (r) => (r.Cliente || "").toLowerCase().trim() === clienteNome
     );
 
     if (dadosCliente.length === 0) {
-      console.warn(`⚠️ Nenhum registro encontrado para o cliente: ${clienteNome}`);
       return res.status(404).json({ erro: "Cliente não encontrado" });
     }
 
-    // Função auxiliar para converter strings em número
     const toInt = (v) => parseInt(v || "0", 10) || 0;
 
-    // Calcula os totais e somatórios
     const total = dadosCliente.length;
     const seguras = dadosCliente.filter(
-      (r) => (r.Status || "").toLowerCase().trim() === "seguro"
+      (r) => (r.Status || "").toLowerCase() === "seguro"
     ).length;
     const vulnerabilidades = dadosCliente.reduce(
       (s, r) => s + toInt(r.Vulnerabilidades),
@@ -72,7 +82,6 @@ export const getResumo = async (req, res) => {
       0
     );
 
-    // Retorna o resumo formatado
     return res.json({
       cliente: clienteNome,
       maquinasTotais: total,
