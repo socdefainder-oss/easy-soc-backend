@@ -1,25 +1,6 @@
 import { getSheetData } from "../services/googleSheetService.js";
 
 /**
- * 🔐 Login básico (modo de testes)
- * Simula autenticação — futuramente substituído por JWT real.
- */
-export async function login(req, res) {
-  const { email, senha } = req.body;
-
-  // Login de teste (apenas simulação)
-  if (email === "empresa@alpha.com" && senha === "12345") {
-    return res.json({
-      token: "abc123",
-      nome: "AlphaTech",
-      id: 1,
-    });
-  }
-
-  return res.status(401).json({ erro: "Credenciais inválidas" });
-}
-
-/**
  * 📊 Obtém o resumo de endpoints de um cliente específico
  * com base na planilha do Google Sheets
  */
@@ -29,34 +10,44 @@ export async function getResumo(req, res) {
     const clientes = ["alphatech", "betacorp", "client3", "client4"];
     const clienteNome = clientes[clienteId - 1];
 
-    console.log(`📄 Lendo planilha para cliente: ${clienteNome}`);
+    console.log(`📄 Iniciando leitura da planilha para o cliente: ${clienteNome}`);
 
-    // Lê os dados da planilha
-    const linhas = await getSheetData("endpoints!A1:Z1000");
+    // 🔹 Leitura direta da planilha
+    const linhas = await getSheetData("endpoints!A1:K100");
 
-    if (!linhas.length) {
-      return res.json({
-        maquinasTotais: 0,
-        maquinasSeguras: 0,
-        vulnerabilidades: 0,
-        riscos: 0,
-        incidentes: 0,
-        detalhes: { maquinas: [] },
+    if (!linhas || linhas.length === 0) {
+      console.error("❌ Nenhum dado retornado da planilha. Verifique o acesso ou o range.");
+      return res.status(500).json({
+        erro: "Falha ao obter dados da planilha (retorno vazio)",
       });
     }
 
-    // Filtra apenas os registros do cliente
+    console.log(`✅ Planilha lida com sucesso: ${linhas.length} linhas encontradas.`);
+
+    // 🔹 Verifica estrutura de dados
+    if (!Array.isArray(linhas)) {
+      console.error("❌ Estrutura de dados inesperada na planilha:", typeof linhas);
+      return res.status(500).json({
+        erro: "Formato de dados incorreto retornado pela planilha",
+      });
+    }
+
+    // 🔹 Filtra registros do cliente
     const dadosCliente = linhas.filter(
       (r) => (r.Cliente || "").toLowerCase() === clienteNome
     );
 
+    if (dadosCliente.length === 0) {
+      console.warn(`⚠️ Nenhum registro encontrado para o cliente: ${clienteNome}`);
+    }
+
+    const toInt = (v) => parseInt(v || "0", 10) || 0;
+
+    // 🔹 Cálculos
     const total = dadosCliente.length;
     const seguras = dadosCliente.filter(
       (r) => (r.Status || "").toLowerCase() === "seguro"
     ).length;
-
-    const toInt = (v) => parseInt(v || "0", 10) || 0;
-
     const vulnerabilidades = dadosCliente.reduce(
       (s, r) => s + toInt(r.Vulnerabilidades),
       0
@@ -67,7 +58,7 @@ export async function getResumo(req, res) {
       0
     );
 
-    // Retorna resumo formatado
+    // 🔹 Retorna tudo
     return res.json({
       maquinasTotais: total,
       maquinasSeguras: seguras,
@@ -77,7 +68,7 @@ export async function getResumo(req, res) {
       detalhes: { maquinas: dadosCliente },
     });
   } catch (err) {
-    console.error("❌ Erro ao gerar resumo:", err);
-    res.status(500).json({ erro: "Falha ao gerar resumo" });
+    console.error("❌ Erro geral ao gerar resumo:", err);
+    res.status(500).json({ erro: "Falha ao gerar resumo da planilha" });
   }
 }
