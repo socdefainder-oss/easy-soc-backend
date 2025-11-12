@@ -1,61 +1,67 @@
 import { getSheetData } from "../services/googleSheetService.js";
 
-// 🔹 Controlador de resumo por cliente
-export async function getResumoCliente(req, res) {
+// Login básico para testes (mantido)
+export async function login(req, res) {
+  const { email, senha } = req.body;
+  if (email === "empresa@alpha.com" && senha === "12345") {
+    return res.json({ token: "abc123", nome: "AlphaTech", id: 1 });
+  }
+  res.status(401).json({ erro: "Credenciais inválidas" });
+}
+
+// Função principal: leitura da planilha
+export async function getResumo(req, res) {
   try {
-    const cliente = req.params.id?.toLowerCase().trim();
-    console.log(`🔹 Gerando resumo para cliente: ${cliente}`);
+    const clienteId = parseInt(req.params.id);
+    const clientes = ["alphatech", "betacorp", "client3", "client4"];
+    const clienteNome = clientes[clienteId - 1];
 
-    const dados = await getSheetData(); // lê a planilha inteira
-    console.log("📄 Total de linhas lidas:", dados.length);
+    console.log(`📄 Lendo planilha para cliente: ${clienteNome}`);
 
-    // Filtra só o cliente solicitado
-    const maquinas = dados.filter(
-      (m) => m.Cliente && m.Cliente.toLowerCase().trim() === cliente
-    );
-
-    console.log(`📊 Máquinas encontradas para ${cliente}:`, maquinas.length);
-
-    if (maquinas.length === 0) {
-      return res.status(404).json({
-        erro: true,
-        mensagem: `Nenhum dado encontrado para o cliente ${cliente}`,
-        detalhes: [],
+    const linhas = await getSheetData("endpoints!A1:Z1000");
+    if (!linhas.length) {
+      return res.json({
+        maquinasTotais: 0,
+        maquinasSeguras: 0,
+        vulnerabilidades: 0,
+        riscos: 0,
+        incidentes: 0,
+        detalhes: { maquinas: [] },
       });
     }
 
-    // Faz resumo geral
-    const total = maquinas.length;
-    const seguras = maquinas.filter((m) => m.Status === "Seguro").length;
-    const vulnerabilidades = maquinas.reduce(
-      (acc, m) => acc + parseInt(m.Vulnerabilidades || 0),
+    // Filtra o cliente
+    const dadosCliente = linhas.filter(
+      (r) => (r.Cliente || "").toLowerCase() === clienteNome
+    );
+
+    const total = dadosCliente.length;
+    const seguras = dadosCliente.filter(
+      (r) => (r.Status || "").toLowerCase() === "seguro"
+    ).length;
+
+    const toInt = (v) => parseInt(v || "0", 10) || 0;
+
+    const vulnerabilidades = dadosCliente.reduce(
+      (s, r) => s + toInt(r.Vulnerabilidades),
       0
     );
-    const riscos = maquinas.reduce(
-      (acc, m) => acc + parseInt(m.Riscos || 0),
-      0
-    );
-    const incidentes = maquinas.reduce(
-      (acc, m) => acc + parseInt(m.Incidentes || 0),
+    const riscos = dadosCliente.reduce((s, r) => s + toInt(r.Riscos), 0);
+    const incidentes = dadosCliente.reduce(
+      (s, r) => s + toInt(r.Incidentes),
       0
     );
 
-    const resumo = {
+    return res.json({
       maquinasTotais: total,
       maquinasSeguras: seguras,
       vulnerabilidades,
       riscos,
       incidentes,
-      detalhes: { maquinas },
-    };
-
-    return res.json(resumo);
-  } catch (error) {
-    console.error("❌ Erro ao gerar resumo:", error);
-    return res.status(500).json({
-      erro: true,
-      mensagem: "Erro interno ao gerar resumo",
-      detalhes: error.message,
+      detalhes: { maquinas: dadosCliente },
     });
+  } catch (err) {
+    console.error("❌ Erro ao gerar resumo:", err);
+    res.status(500).json({ erro: "Falha ao gerar resumo" });
   }
 }
