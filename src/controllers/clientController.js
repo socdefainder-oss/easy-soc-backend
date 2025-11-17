@@ -14,6 +14,7 @@ export const login = async (req, res) => {
   const usuarios = [
     { email: "empresa@alpha.com", senha: "12345", cliente: "alphatech" },
     { email: "empresa@beta.com", senha: "12345", cliente: "betacorp" },
+    { email: "lduarte@athan.cc", senha: "VWwK1s5o@4*DD1", cliente: "athan" },
   ];
 
   const user = usuarios.find(
