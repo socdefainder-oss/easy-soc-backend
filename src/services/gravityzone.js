@@ -111,6 +111,44 @@ function execStatus(ep) {
   return "OK";
 }
 
+function collectVulnerabilities(ep) {
+  const vulnerabilidades = [];
+
+  if (!ep.policyApplied) vulnerabilidades.push("Política não aplicada");
+  if (!ep.antimalware) vulnerabilidades.push("Antimalware inativo");
+  if (!ep.advancedThreatControl) vulnerabilidades.push("ATC/EDR inativo");
+  if (!ep.networkAttackDefense) vulnerabilidades.push("Network Attack Defense inativo");
+  if (!ep.hyperDetect) vulnerabilidades.push("HyperDetect inativo");
+  if (!ep.sandboxAnalyzer) vulnerabilidades.push("Sandbox Analyzer inativo");
+  if (ep.productOutdated) vulnerabilidades.push("Produto desatualizado");
+
+  return vulnerabilidades;
+}
+
+function collectRisks(ep) {
+  const riscos = [];
+
+  if (!ep.policyApplied) riscos.push("Endpoint sem política aplicada");
+  if (!ep.antimalware) riscos.push("Ausência de proteção antimalware");
+  if (!ep.advancedThreatControl) riscos.push("Sem controle avançado de ameaças");
+  if (!ep.networkAttackDefense) riscos.push("Sem defesa contra ataques de rede");
+  if (ep.productOutdated) riscos.push("Agente/assinaturas desatualizados");
+  if (!ep.riskManagement) riscos.push("Módulo de Risk Management inativo");
+
+  return riscos;
+}
+
+function riskScore(ep) {
+  let score = 0;
+  if (!ep.policyApplied) score += 30;
+  if (!ep.antimalware) score += 30;
+  if (!ep.advancedThreatControl) score += 15;
+  if (!ep.networkAttackDefense) score += 10;
+  if (!ep.riskManagement) score += 5;
+  if (ep.productOutdated) score += 10;
+  return Math.min(score, 100);
+}
+
 export function normalizeEndpoints(items) {
   return items.map((item) => {
     const d = item.details ?? {};
@@ -143,6 +181,11 @@ export function normalizeEndpoints(items) {
     };
 
     ep.status = execStatus(ep);
+    ep.vulnerabilidadesEncontradas = collectVulnerabilities(ep);
+    ep.qtdVulnerabilidades = ep.vulnerabilidadesEncontradas.length;
+    ep.riscosIdentificados = collectRisks(ep);
+    ep.qtdRiscos = ep.riscosIdentificados.length;
+    ep.riskScore = riskScore(ep);
     return ep;
   });
 }
