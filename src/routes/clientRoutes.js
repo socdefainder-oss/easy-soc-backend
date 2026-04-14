@@ -9,6 +9,8 @@ import {
   getIncidentes
 } from "../controllers/clientController.js";
 
+import { getEndpoints } from "../controllers/gravityzoneController.js";
+
 import { autenticarToken } from "../middleware/authMiddleware.js";
 
 import RSSParser from "rss-parser";
@@ -53,7 +55,14 @@ router.get("/incidentes", autenticarToken, getIncidentes);
 
 /*
 |--------------------------------------------------------------------------
-| 📰 NOTÍCIAS (RSS)
+| �️ GRAVITYZONE
+|--------------------------------------------------------------------------
+*/
+router.get("/gravityzone/endpoints", autenticarToken, getEndpoints);
+
+/*
+|--------------------------------------------------------------------------
+| �📰 NOTÍCIAS (RSS)
 |--------------------------------------------------------------------------
 */
 router.get("/noticias", autenticarToken, async (req, res) => {
